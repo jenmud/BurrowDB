@@ -56,15 +56,15 @@ generate-ui:
 
 
 migrations:
-	~/go/bin/migrate -path ./internal/store/migrations -database "postgres://local:dev@localhost:5432/burrow?sslmode=disable" up
+	~/go/bin/migrate -path ./migrations -database "postgres://local:dev@localhost:5432/burrow?sslmode=disable" up
 
 
 migrations-down:
-	~/go/bin/migrate -path ./internal/store/migrations -database "postgres://local:dev@localhost:5432/burrow?sslmode=disable" down
+	~/go/bin/migrate -path ./migrations -database "postgres://local:dev@localhost:5432/burrow?sslmode=disable" down
 
 
 migrations-drop:
-	~/go/bin/migrate -path ./internal/store/migrations -database "postgres://local:dev@localhost:5432/burrow?sslmode=disable" drop -f
+	~/go/bin/migrate -path ./migrations -database "postgres://local:dev@localhost:5432/burrow?sslmode=disable" drop -f
 
 
 generate: generate-ui generate-swagger

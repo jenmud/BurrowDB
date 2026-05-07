@@ -1,0 +1,39 @@
+services:
+  nats:
+    image: nats:latest
+    container_name: nats-server
+    ports:
+      - "4222:4222" # Client connections
+      - "8222:8222" # HTTP monitoring
+      - "6222:6222" # Cluster routing
+    command: ["--js", "--m", "8222"] # Enable JetStream and Monitoring
+    volumes:
+      - $PWD/example/nats:/data
+    networks:
+      - burrow
+
+  db:
+    image: postgres:latest
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: local
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: burrow
+    ports:
+      - "5432:5432"
+    volumes:
+      - $PWD/example/postgres/data:/var/lib/postgresql
+    networks:
+      - burrow
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - burrow
+
+networks:
+  burrow:

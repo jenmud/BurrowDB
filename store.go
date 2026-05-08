@@ -52,7 +52,7 @@ func (s *Store) Close() error {
 const DefaultLimit = 100
 
 type NodesArgs struct {
-	Limit  int
+	Limit  uint
 	Cursor string
 }
 
@@ -61,7 +61,7 @@ func (s *Store) Nodes(ctx context.Context, args NodesArgs) ([]Node, error) {
 	ctx, span := tracer.Start(ctx, "Nodes")
 	defer span.End()
 
-	if args.Limit <= 0 {
+	if args.Limit == 0 {
 		args.Limit = DefaultLimit
 	}
 
@@ -69,16 +69,16 @@ func (s *Store) Nodes(ctx context.Context, args NodesArgs) ([]Node, error) {
 		SELECT
 			n.id,
 			n.properties,
-			COALESCE(array_agg(l.name) FILTER (WHERE l.name IS NOT NULL), '{}') AS labels
+			COALESCE(array_agg(l.name ORDER BY l.name) FILTER (WHERE l.name IS NOT NULL), '{}') AS labels
 		FROM nodes n
 		LEFT JOIN node_labels l ON l.node_id = n.id
-		WHERE id > $1
+		WHERE n.id > $1
 		GROUP BY n.id
 		ORDER BY n.id ASC
 		LIMIT $2;
 	`
 
-	rows, err := s.db.Query(ctx, query, args.Limit)
+	rows, err := s.db.Query(ctx, query, args.Cursor, args.Limit)
 	if err != nil {
 		return nil, err
 	}

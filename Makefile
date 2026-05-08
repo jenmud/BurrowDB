@@ -1,7 +1,7 @@
 GO = go
 
 
-.PHONY: tidy vendor install install-gotests tools update-tools test generate generate-ui generate-swagger fix run build
+.PHONY: tidy vendor install install-gotests tools update-tools test generate generate-ui generate-swagger fix run build migrations
 
 
 install-tailwind-cli:

@@ -2,9 +2,21 @@ package burrowdb
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"go.opentelemetry.io/contrib/bridges/otelslog"
+	"go.opentelemetry.io/otel"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const name = "github.com/jenmud/BurrowDB"
+
+var (
+	tracer = otel.Tracer(name)
+	meter  = otel.Meter(name)
+	logger = otelslog.NewLogger(name)
 )
 
 const (
@@ -14,7 +26,7 @@ const (
 
 // Store simplified layer used for querying the underlying data.
 type Store struct {
-	db *pgx.Conn
+	db *pgxpool.Pool
 }
 
 // NewStore return a new store.
@@ -22,17 +34,75 @@ func NewStore(ctx context.Context, dsn string) (*Store, error) {
 	ctx, cancel := context.WithTimeout(ctx, connectTimeout)
 	defer cancel()
 
-	conn, err := pgx.Connect(ctx, dsn)
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Store{db: conn}, nil
+	return &Store{db: pool}, nil
 }
 
 // Close closes the store.
 func (s *Store) Close() error {
-	ctx, cancel := context.WithTimeout(context.Background(), closeTimeout)
-	defer cancel()
-	return s.db.Close(ctx)
+	s.db.Close()
+	return nil
+}
+
+// DefaultLimit is the default limit for queries.
+const DefaultLimit = 100
+
+type NodesArgs struct {
+	Limit  int
+	Cursor string
+}
+
+// Nodes returns all the nodes in the store.
+func (s *Store) Nodes(ctx context.Context, args NodesArgs) ([]Node, error) {
+	ctx, span := tracer.Start(ctx, "Nodes")
+	defer span.End()
+
+	if args.Limit <= 0 {
+		args.Limit = DefaultLimit
+	}
+
+	query := `
+		SELECT
+			n.id,
+			n.properties,
+			COALESCE(array_agg(l.name) FILTER (WHERE l.name IS NOT NULL), '{}') AS labels
+		FROM nodes n
+		LEFT JOIN node_labels l ON l.node_id = n.id
+		WHERE id > $1
+		GROUP BY n.id
+		ORDER BY n.id ASC
+		LIMIT $2;
+	`
+
+	rows, err := s.db.Query(ctx, query, args.Limit)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes := make([]Node, 0, args.Limit)
+
+	for rows.Next() {
+		n := Node{}
+
+		labels := []byte{}
+		props := []byte{}
+
+		if err := rows.Scan(&n.ID, &props, &labels); err != nil {
+			return nodes, err
+		}
+
+		if err := json.Unmarshal(props, &n.Properties); err != nil {
+			return nodes, err
+		}
+
+		if err := json.Unmarshal(labels, &n.Labels); err != nil {
+			return nodes, err
+		}
+	}
+
+	return nodes, nil
 }

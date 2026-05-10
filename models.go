@@ -1,4 +1,4 @@
-package burrowdb
+package burrow
 
 // Node represents a node in the store.
 type Node struct {

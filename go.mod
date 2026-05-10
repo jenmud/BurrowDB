@@ -1,4 +1,4 @@
-module burrowdb
+module burrow
 
 go 1.26.2
 

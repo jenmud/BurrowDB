@@ -1,4 +1,4 @@
-package burrowdb
+package burrow
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const name = "github.com/jenmud/BurrowDB"
+const name = "github.com/jenmud/burrow"
 
 var (
 	tracer = otel.Tracer(name)
